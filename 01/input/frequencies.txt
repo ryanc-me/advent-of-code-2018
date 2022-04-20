@@ -1,6 +1,10 @@
 +19
+Random non-number text should be fine
 -13
 +3
+As should empty spaces
+
+
 +3
 +3
 +8
