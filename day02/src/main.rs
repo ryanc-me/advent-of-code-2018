@@ -62,7 +62,7 @@ fn part2<R: BufRead + Seek>(buf: &mut R) -> Result<String, Box<dyn Error>> {
     let mut found: Option<(String, String)> = None;
 
     for (i, line1) in iter1.enumerate() {
-        let iter2 = boxes.iter().skip(i);
+        let iter2 = boxes.iter().skip(i+1);
         for line2 in iter2 {
             let uncommon = num_uncommon_chars(&line1, &line2);
 
