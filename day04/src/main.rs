@@ -11,7 +11,10 @@ type Result<T> = result::Result<T, Box<dyn error::Error>>;
 
 fn main() -> Result<()> {
     let buf = io::BufReader::new(fs::File::open(&INPUT_FILE)?);
-    let guards = parse_guards(buf)?;
+    let mut guards = parse_guards(buf)?;
+
+    // pre-sort guards by sleepiness
+    guards.sort_by_cached_key(|x| cmp::Reverse(x.time_asleep()));
 
     let strat1 = part1(&guards)?;
     let strat2 = part2(&guards)?;
@@ -136,25 +139,13 @@ fn parse_guards<T: BufRead>(buf: T) -> Result<Vec<Guard>> {
 }
 
 fn part1(guards: &Vec<Guard>) -> Result<u32> {
-    let mut guards = guards.clone();
-
     // find the sleepiest guard
-    guards.sort_by_cached_key(|x| cmp::Reverse(x.time_asleep()));
     let guard = guards.get(0)
         .ok_or("There are no guards!".to_string())?;
 
-    // build an array showing the minutes the guard is asleep
-    let mut minutes = [0u8; 61];
-    let asleep_entries = guard
-        .get_entries()
-        .filter(|x| x.consciousness == Consciousness::Asleep);
-    for entry in asleep_entries {
-        for i in entry.time_start..=entry.time_end {
-            debug_assert!(i <= 60);
-            minutes[i as usize] += 1;
-        }
-    }
-
+    // grab an array of the total times the guard was asleep
+    // for each minute in the hour
+    let minutes = guard.get_minutes();
 
     // sort and collect into a vec of (minute, num_sleeps)
     let mut minutes: Vec<(usize, u8)> = minutes
@@ -167,9 +158,28 @@ fn part1(guards: &Vec<Guard>) -> Result<u32> {
     Ok(guard.id * minutes[0].0 as u32)
 }
 
-fn part2(guard: &Vec<Guard>) -> Result<u32> {
-    // conver guards into a vec
-    Ok(0)
+fn part2(guards: &Vec<Guard>) -> Result<u32> {
+    let mut sleepiest_guard: (u32, usize, u8) = (0, 0, 0);
+    for guard in guards {
+        let minutes = guard.get_minutes();
+        let max_min = minutes
+            .iter()
+            .enumerate()
+            .fold((0usize, 0u8), |acc, (i, &x)| {
+                if x > acc.1 {
+                    (i, x)
+                }
+                else {
+                    acc
+                }
+            });
+        
+        if max_min.1 > sleepiest_guard.2 {
+            sleepiest_guard = (guard.id, max_min.0, max_min.1);
+        }
+    }
+
+    Ok(sleepiest_guard.0 * sleepiest_guard.1 as u32)
 }
 
 #[derive(Debug, Clone)]
@@ -221,6 +231,23 @@ impl Guard {
             .iter()
             .map(|x| &x.entries)
             .flatten()
+    }
+
+    fn get_minutes(&self) -> [u8; 61] {
+        // build an array showing the minutes the guard is asleep
+        // note: array is 61-long, because of :00
+        let mut minutes = [0u8; 61];
+        let asleep_entries = self
+            .get_entries()
+            .filter(|x| x.consciousness == Consciousness::Asleep);
+        for entry in asleep_entries {
+            for i in entry.time_start..=entry.time_end {
+                debug_assert!(i <= 60);
+                minutes[i as usize] += 1;
+            }
+        }
+
+        minutes
     }
 }
 
