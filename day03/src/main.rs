@@ -11,7 +11,7 @@ type Result<T> = result::Result<T, Box<dyn error::Error>>;
 
 
 fn main() -> Result<()> {
-    let mut buf = io::BufReader::new(fs::File::open(&INPUT_FILE)?);
+    let buf = io::BufReader::new(fs::File::open(&INPUT_FILE)?);
 
     let claims = parse_claims(buf)?;
 

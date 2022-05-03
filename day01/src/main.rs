@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fs::File;
-use std::io::{BufReader, Read, prelude::*};
+use std::io::{BufReader, prelude::*};
 use std::collections::HashSet;
 
 const FREQUENCIES_FILE: &str = "./input/frequencies.txt";
