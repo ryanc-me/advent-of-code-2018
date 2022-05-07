@@ -23,16 +23,15 @@ fn main() -> Result<()> {
         .collect::<Result<Vec<_>>>()?;
 
     let p1 = part1(&mut steps)?;
-    // let p2 = part2()?;
+    let p2 = part2(&mut steps)?;
 
     println!("Part 1: {}", p1);
-    // println!("Part 2: {}", p2);
+    println!("Part 2: {:?}", p2);
 
     Ok(())
 }
 
-fn part1(steps: &mut Vec<Step>) -> Result<String> {
-    // build a map of (step) -> [depends, on]
+fn parse_deps(steps: &Vec<Step>) -> HashMap<char, HashSet<char>> {
     let mut dependencies: HashMap<char, HashSet<char>> = HashMap::new();
     for step in steps.iter() {
         let entry = dependencies
@@ -40,13 +39,23 @@ fn part1(steps: &mut Vec<Step>) -> Result<String> {
             .or_insert(HashSet::new());
         entry.insert(step.name);
     }
+
+    dependencies
+}
+
+fn parse_initial(steps: &Vec<Step>, deps: &HashMap<char, HashSet<char>>) -> BTreeSet<char> {
+    steps.iter()
+        .filter(|x| !deps.contains_key(&x.name))
+        .map(|x| x.name)
+        .collect()
+}
+
+fn part1(steps: &mut Vec<Step>) -> Result<String> {
+    // build a map of (step) -> [depends, on]
+    let dependencies = parse_deps(steps);
     
     // find steps with no dependencies (initially available steps)
-    let mut available: BTreeSet<char> = steps
-        .iter()
-        .filter(|x| !dependencies.contains_key(&x.name))
-        .map(|x| x.name)
-        .collect();
+    let mut available = parse_initial(steps, &dependencies);
 
     // keep track of completed steps (in the correct order)
     let mut complete: Vec<char> = Vec::new();
@@ -68,6 +77,12 @@ fn part1(steps: &mut Vec<Step>) -> Result<String> {
     }
 
     Ok(complete.into_iter().collect())
+}
+
+
+fn part2(steps: &mut Vec<Step>) -> Result<(u32, String)> {
+
+    unimplemented!()
 }
 
 #[derive(Debug)]
