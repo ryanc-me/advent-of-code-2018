@@ -36,8 +36,10 @@ fn main() -> Result<()> {
     let mut grid = parse_grid(buf)?;
 
     let p1 = part1(&mut grid)?;
+    let p2 = part2(&mut grid)?;
 
     println!("Part 1: {}", p1);
+    println!("Part 2: {}", p2);
 
     Ok(())
 }
@@ -157,4 +159,25 @@ fn part1(grid: &mut Grid) -> Result<u32> {
     // sort by size, desc
     grid.points.sort_by_key(|x| cmp::Reverse(x.size));
     Ok(grid.points[0].size)
+}
+
+fn part2(grid: &mut Grid) -> Result<u32> {
+    let mut point_distances = vec![0; (grid.w * grid.h) as usize];
+    for y in grid.ymin..=grid.ymax {
+        for x in grid.xmin..=grid.xmax {
+            let idx = ((x - grid.xmin) + grid.w * (y - grid.ymin)) as usize;
+            let total_distance: u32 = grid.points
+                .iter()
+                .map(|p| dist(x, y, p.x, p.y))
+                .sum();
+            point_distances[idx] = total_distance;
+        }
+    }
+
+    let area = point_distances
+        .iter()
+        .filter(|&x| *x < 10_000)
+        .count();
+    
+    Ok(area as u32)
 }
