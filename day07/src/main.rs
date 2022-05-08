@@ -11,6 +11,8 @@ use std::collections::{HashSet, HashMap, BTreeSet};
 use regex::Regex;
 
 const INPUT_FILE: &str = "./input/steps.txt";
+const NUM_WORKERS: usize = 5;
+const STEP_TIME: usize = 60;
 
 type Result<T> = result::Result<T, Box<dyn error::Error>>;
 
@@ -26,12 +28,15 @@ fn main() -> Result<()> {
     let p2 = part2(&mut steps)?;
 
     println!("Part 1: {}", p1);
-    println!("Part 2: {:?}", p2);
+    println!("Part 2: {}", p2.1);
+    println!("     -> {}", p2.0);
 
     Ok(())
 }
 
 fn parse_deps(steps: &Vec<Step>) -> HashMap<char, HashSet<char>> {
+    // parse the list of (step_name, step_dep) into a hash map
+    // of (step) -> [list, of, dependencies]
     let mut dependencies: HashMap<char, HashSet<char>> = HashMap::new();
     for step in steps.iter() {
         let entry = dependencies
@@ -44,10 +49,24 @@ fn parse_deps(steps: &Vec<Step>) -> HashMap<char, HashSet<char>> {
 }
 
 fn parse_initial(steps: &Vec<Step>, deps: &HashMap<char, HashSet<char>>) -> BTreeSet<char> {
+    // find the initial steps (e.g. ones who aren't dependent on anything else)
     steps.iter()
         .filter(|x| !deps.contains_key(&x.name))
         .map(|x| x.name)
         .collect()
+}
+
+fn take_job(available: &mut BTreeSet<char>, running: &mut HashSet<char>) -> Option<(char, usize)> {
+    // attempt to take a job from `available`; if successful,
+    // return it, and update the set `running` with that job (char)
+    match available.pop_first() {
+        Some(step) => {
+            let time = STEP_TIME + (step as u8 - 64) as usize;
+            running.insert(step);
+            Some((step, time))
+        }
+        _ => None
+    }
 }
 
 fn part1(steps: &mut Vec<Step>) -> Result<String> {
@@ -79,10 +98,68 @@ fn part1(steps: &mut Vec<Step>) -> Result<String> {
     Ok(complete.into_iter().collect())
 }
 
-
 fn part2(steps: &mut Vec<Step>) -> Result<(u32, String)> {
+    let dependencies = parse_deps(steps);
+    let mut available = parse_initial(steps, &dependencies);
 
-    unimplemented!()
+    // track workers, whether they're working, and which char they're working on
+    let mut workers: Vec<Option<(char, usize)>> = vec![None; NUM_WORKERS];
+
+    // keep track of completed chars (in order), and currently running chars
+    let mut complete: Vec<char> = Vec::new();
+    let mut running: HashSet<char> = HashSet::new();
+
+    // total time spent working, and the total number of jobs to do
+    let mut total_time: u32 = 0;
+    let total_todo = dependencies.keys().len() + available.len();
+
+
+    loop {
+        // attempt to do some work
+        for maybe_worker in workers.iter_mut() {
+            if let Some(ref mut worker) = maybe_worker {
+                if worker.1 == 1 {
+                    // the worker has a job assigned, and has completed it;
+                    // grab a new one
+                    running.remove(&worker.0);
+                    complete.push(worker.0);
+                    *maybe_worker = take_job(&mut available, &mut running);
+                }
+            }
+            else {
+                // worker is not working, try to grab a new job
+                *maybe_worker = take_job(&mut available, &mut running);
+            }
+
+            if let Some(ref mut worker) = maybe_worker {
+                // finally, do some work. note that elves are fast, and can
+                // do work on the very second a job is assigned to them
+                // (which is why this is run last; a job is added, then worked
+                // on immediately)
+                worker.1 -= 1;
+            }
+        }
+
+        // update the list of available jobs
+        for (name, deps) in &dependencies {
+            if complete.contains(name) || running.contains(name) { continue }
+
+            let mut ready = true;
+            for dep in deps {
+                if !complete.contains(dep) {
+                    ready = false;
+                }
+            }
+            if ready {
+                available.insert(*name);
+            }
+        }
+        
+        total_time += 1;
+        if complete.len() == total_todo { break }
+    }
+
+    Ok((total_time, complete.into_iter().collect()))
 }
 
 #[derive(Debug)]
